@@ -46,6 +46,6 @@ const resturantSchema = new mongoose.Schema<IResturantDocument>({
     ref: 'Menu'
   }],
 
-});
+},{timestamps: true});
 
 export const Resturant = mongoose.model("Resturant", resturantSchema)
