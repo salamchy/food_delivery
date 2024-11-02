@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { User } from "../models/user.model";
+import Bcryptjs from "bcryptjs";
 
 export const signup = async(req:Request, res:Response) => {
   try {
@@ -8,9 +9,10 @@ export const signup = async(req:Request, res:Response) => {
     let user = await User.findOne({email});
     if (user) {
       return res.status(400).json({success: false,
-        message:"User already exist"
+        message:"User already exist with this email"
       })
     }
+    const hashedPassword = await Bcryptjs.hash(password, 10);
   } catch (error) {
     console.log(error);
     return res.status(500).json({message: "Internal Server Error"})
