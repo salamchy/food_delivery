@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 
 export interface IMenu {
   _id: mongoose.Schema.Types.ObjectId;
