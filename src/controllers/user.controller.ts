@@ -13,6 +13,18 @@ export const signup = async(req:Request, res:Response) => {
       })
     }
     const hashedPassword = await Bcryptjs.hash(password, 10);
+
+     const verificationToken = "kjfhosdhf"; //generateVerification();
+    user = await User.create({
+      fullname,
+      email,
+      password:hashedPassword,
+      contact: Number(contact),
+      verificationToken,
+      verificationTokenExpiresAt: Date.now()+24*60*60*1000
+    })
+
+    //generateToken(req, user);
   } catch (error) {
     console.log(error);
     return res.status(500).json({message: "Internal Server Error"})
