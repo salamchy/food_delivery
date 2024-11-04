@@ -4,13 +4,13 @@ import Bcryptjs from "bcryptjs";
 import crypto from "crypto-js";
 
 // Function to handle user signup
-export const signup = async(req: Request, res: Response) => {
+export const signup = async (req: Request, res: Response) => {
   try {
     // Destructure values from the request body (name, email, password, contact number)
     const { fullname, email, password, contact } = req.body;
 
     // Check if a user already exists with the provided email
-    let user = await User.findOne({email});
+    let user = await User.findOne({ email });
     if (user) {
       // If user already exists, respond with a 400 status and error message
       return res.status(400).json({
@@ -40,7 +40,7 @@ export const signup = async(req: Request, res: Response) => {
     // await sendVerificationEmail(email, verificationToken);
 
     // Find the user in the database without including the password field
-    const userWithoutPassword = await User.findOne({email}).select("-password");
+    const userWithoutPassword = await User.findOne({ email }).select("-password");
 
     // Respond with a success message and user information
     return res.status(201).json({
@@ -52,7 +52,7 @@ export const signup = async(req: Request, res: Response) => {
   } catch (error) {
     // Log error to console and respond with a 500 status for server error
     console.log(error);
-    return res.status(500).json({message: "Internal Server Error"});
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
@@ -90,7 +90,7 @@ export const login = async (req: Request, res: Response) => {
     await user.save();
 
     // Retrieve user information without the password
-    const userWithoutPassword = await User.findOne({email}).select("-password");
+    const userWithoutPassword = await User.findOne({ email }).select("-password");
 
     // Respond with a success message and user information
     return res.status(200).json({
@@ -102,13 +102,13 @@ export const login = async (req: Request, res: Response) => {
   } catch (error) {
     // Log error and respond with a 500 status for server error
     console.log(error);
-    return res.status(500).json({message: "Internal Server Error"});
+    return res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 
 // Function to handle email verification
-export const verifyEmail = async(req: Request, res: Response) => {
+export const verifyEmail = async (req: Request, res: Response) => {
   try {
     // Extract the verification code from the request body
     const { verificationCode } = req.body;
@@ -165,7 +165,7 @@ export const logout = async (_: Request, res: Response) => {
       success: true,
       message: "Logged out successfully"
     });
-    
+
   } catch (error) {
     // If an error occurs, log it to the console and respond with a 500 status for server error
     console.log(error);
@@ -177,7 +177,7 @@ export const logout = async (_: Request, res: Response) => {
 
 
 // Function to handle forgot password requests
-export const forgotPassword = async(req: Request, res: Response) => {
+export const forgotPassword = async (req: Request, res: Response) => {
   try {
     // Step 1: Retrieve the user's email from the request body
     const { email } = req.body;
@@ -221,7 +221,7 @@ export const forgotPassword = async(req: Request, res: Response) => {
 
 
 // Function to handle password reset
-export const resetPassword = async(req: Request, res: Response) => {
+export const resetPassword = async (req: Request, res: Response) => {
   try {
     // Step 1: Retrieve the reset token from the request parameters and the new password from the request body
     const { token } = req.params;
@@ -243,7 +243,7 @@ export const resetPassword = async(req: Request, res: Response) => {
 
     // Step 4: Hash the new password for security
     const hashedPassword = await Bcryptjs.hash(newPassword, 10);
-    
+
     // Step 5: Update the user's password and clear the reset token and expiration time
     user.password = hashedPassword;
     user.resetPasswordToken = undefined;
@@ -257,6 +257,39 @@ export const resetPassword = async(req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       message: "Password reset successfully."
+    });
+
+  } catch (error) {
+    // Log any errors to the console and return a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+}
+
+
+// Function to check if the user is authenticated
+export const checkAuth = async (req: Request, res: Response) => {
+  try {
+    // Step 1: Retrieve the user ID from the request (assumed to be added in a middleware after authentication)
+    const userId = req.id;
+
+    // Step 2: Find the user in the database by their ID, excluding the password field from the result
+    const user = await User.findById(userId).select("-password");
+
+    // Step 3: If no user is found, respond with a 404 status and an error message
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Step 4: If user is found, respond with a success message and user information
+    return res.status(200).json({
+      success: true,
+      user
     });
 
   } catch (error) {
