@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { User } from "../models/user.model";
 import Bcryptjs from "bcryptjs";
+import crypto from "crypto-js";
 
 // Function to handle user signup
 export const signup = async(req: Request, res: Response) => {
@@ -157,7 +158,7 @@ export const verifyEmail = async(req: Request, res: Response) => {
 
 
 // Function to handle user logout
-export const logout = async (req: Request, res: Response) => {
+export const logout = async (_: Request, res: Response) => {
   try {
     // Clear the authentication token cookie and send a success response
     return res.clearCookie("token").status(200).json({
@@ -167,6 +168,50 @@ export const logout = async (req: Request, res: Response) => {
     
   } catch (error) {
     // If an error occurs, log it to the console and respond with a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+}
+
+
+// Function to handle forgot password requests
+export const forgotPassword = async(req: Request, res: Response) => {
+  try {
+    // Step 1: Retrieve the user's email from the request body
+    const { email } = req.body;
+
+    // Step 2: Check if a user with the provided email exists in the database
+    const user = await User.findOne({ email });
+    if (!user) {
+      // If user does not exist, return a 400 status with an error message
+      return res.status(400).json({
+        success: false,
+        message: "User doesn't exist"
+      });
+    }
+
+    // Step 3: Generate a unique reset token and set its expiration time to 1 hour from now
+    const resetToken = crypto.randomBytes(40).toString('hex'); // Generate random token
+    const resetTokenExpiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // Token expires in 1 hour
+
+    // Step 4: Save the reset token and its expiration time in the user’s record
+    user.resetPasswordToken = resetToken;
+    user.resetPasswordTokenExpiresAt = resetTokenExpiresAt;
+    await user.save();
+
+    // Step 5: Optionally, send an email to the user with the reset link (function not implemented here)
+    // await sendPasswordResetEmail(user.email, `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`); 
+
+    // Step 6: Send a success message indicating that the reset link was sent
+    return res.status(200).json({
+      success: true,
+      message: "Password reset link sent to your email."
+    });
+
+  } catch (error) {
+    // Log any errors to the console and return a 500 status for server error
     console.log(error);
     return res.status(500).json({
       message: "Internal Server error"
