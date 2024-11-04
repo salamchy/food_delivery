@@ -25,9 +25,20 @@ export const signup = async(req:Request, res:Response) => {
     })
 
     //generateToken(req, user);
+    // await sendVerificationEmail(email, verificationToken);
+
+    const userwiwthoutPassword = await User.findOne({email}).select("-password");
+
+    return res.status(201).json({
+      success: true,
+      message:"Account created successfully",
+      user,
+    })
+
   } catch (error) {
     console.log(error);
     return res.status(500).json({message: "Internal Server Error"})
     
   }
 }
+
