@@ -218,3 +218,52 @@ export const forgotPassword = async(req: Request, res: Response) => {
     });
   }
 }
+
+
+// Function to handle password reset
+export const resetPassword = async(req: Request, res: Response) => {
+  try {
+    // Step 1: Retrieve the reset token from the request parameters and the new password from the request body
+    const { token } = req.params;
+    const { newPassword } = req.body;
+
+    // Step 2: Find a user with a matching reset token that has not expired
+    const user = await User.findOne({
+      resetPasswordToken: token,
+      resetPasswordTokenExpiresAt: { $gt: Date.now() } // Check if token is still valid
+    });
+
+    // Step 3: If no user is found, the token is invalid or expired
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired reset token"
+      });
+    }
+
+    // Step 4: Hash the new password for security
+    const hashedPassword = await Bcryptjs.hash(newPassword, 10);
+    
+    // Step 5: Update the user's password and clear the reset token and expiration time
+    user.password = hashedPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordTokenExpiresAt = undefined;
+    await user.save();
+
+    // Step 6: Optionally, send an email confirming password reset success (function not implemented here)
+    // await sendResetSuccessEmail(user.email);
+
+    // Step 7: Respond with a success message
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successfully."
+    });
+
+  } catch (error) {
+    // Log any errors to the console and return a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+}
