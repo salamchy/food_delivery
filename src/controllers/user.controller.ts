@@ -154,3 +154,22 @@ export const verifyEmail = async(req: Request, res: Response) => {
     });
   }
 };
+
+
+// Function to handle user logout
+export const logout = async (req: Request, res: Response) => {
+  try {
+    // Clear the authentication token cookie and send a success response
+    return res.clearCookie("token").status(200).json({
+      success: true,
+      message: "Logged out successfully"
+    });
+    
+  } catch (error) {
+    // If an error occurs, log it to the console and respond with a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+}
