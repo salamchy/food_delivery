@@ -104,3 +104,53 @@ export const login = async (req: Request, res: Response) => {
     return res.status(500).json({message: "Internal Server Error"});
   }
 };
+
+
+// Function to handle email verification
+export const verifyEmail = async(req: Request, res: Response) => {
+  try {
+    // Extract the verification code from the request body
+    const { verificationCode } = req.body;
+
+    // Find a user with a matching verification token that hasn't expired
+    const user = await User.findOne({
+      verificationToken: verificationCode,
+      verificationTokenExpiresAt: { $gt: Date.now() } // token expiry check
+    }).select("-password"); // exclude password from the response
+
+    // If no user is found, the token is invalid or expired
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid or expired verification token"
+      });
+    }
+
+    // Mark the user's account as verified
+    user.isVerified = true;
+
+    // Remove the verification token and its expiry date from the user record
+    user.verificationToken = undefined;
+    user.verificationTokenExpiresAt = undefined;
+
+    // Save the updated user information to the database
+    await user.save();
+
+    // Optionally: send a welcome email to the user (function not implemented here)
+    // await sendWelcomeEmail(user.email, user.fullname);
+
+    // Respond with a success message and the user information
+    return res.status(200).json({
+      success: true,
+      message: "Email verified successfully",
+      user
+    });
+
+  } catch (error) {
+    // Log the error and respond with a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+};
