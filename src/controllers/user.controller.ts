@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { User } from "../models/user.model";
 import Bcryptjs from "bcryptjs";
 import crypto from "crypto-js";
+import cloudinary from "../utils/cloudinary";
 
 // Function to handle user signup
 export const signup = async (req: Request, res: Response) => {
@@ -290,6 +291,42 @@ export const checkAuth = async (req: Request, res: Response) => {
     return res.status(200).json({
       success: true,
       user
+    });
+
+  } catch (error) {
+    // Log any errors to the console and return a 500 status for server error
+    console.log(error);
+    return res.status(500).json({
+      message: "Internal Server error"
+    });
+  }
+}
+
+
+// Function to handle user profile update
+export const updateProfile = async (req: Request, res: Response) => {
+  try {
+    // Step 1: Retrieve the user ID from the request, which is assumed to be set by an authentication middleware
+    const userId = req.id;
+
+    // Step 2: Extract updated profile information from the request body
+    const { fullname, email, address, city, profilePicture } = req.body;
+
+    // Step 3: Upload the new profile picture to Cloudinary and store the response
+    let cloudResponse: any;
+    cloudResponse = await cloudinary.uploader.upload(profilePicture);
+
+    // Step 4: Prepare updated data object with profile details
+    const updatedData = { fullname, email, address, city, profilePicture: cloudResponse.secure_url };
+
+    // Step 5: Find the user by their ID and update their profile with the new data
+    const user = await User.findByIdAndUpdate(userId, updatedData, { new: true }).select("-password");
+
+    // Step 6: Respond with a success message and the updated user profile data
+    return res.status(200).json({
+      success: true,
+      user,
+      message: "Profile updated successfully."
     });
 
   } catch (error) {
