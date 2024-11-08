@@ -3,6 +3,8 @@ import { User } from "../models/user.model";
 import Bcryptjs from "bcryptjs";
 import crypto from "crypto-js";
 import cloudinary from "../utils/cloudinary";
+import { generateVerificationCode } from "../utils/generateVerificationCode";
+import { generateToken } from "../utils/generateToken";
 
 // Function to handle user signup
 export const signup = async (req: Request, res: Response) => {
@@ -24,7 +26,7 @@ export const signup = async (req: Request, res: Response) => {
     const hashedPassword = await Bcryptjs.hash(password, 10);
 
     // Generate a verification token (placeholder for now)
-    const verificationToken = "kjfhosdhf"; // generateVerification() function can be implemented
+    const verificationToken = generateVerificationCode(6);
 
     // Create a new user in the database with provided info, hashed password, and verification token
     user = await User.create({
@@ -37,7 +39,7 @@ export const signup = async (req: Request, res: Response) => {
     });
 
     // Optionally: generate an authentication token and send a verification email (functions not implemented here)
-    // generateToken(req, user);
+    generateToken(res, user);
     // await sendVerificationEmail(email, verificationToken);
 
     // Find the user in the database without including the password field
