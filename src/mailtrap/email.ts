@@ -11,6 +11,7 @@ export const sendVerification = async (email: string, verificationToken: string)
       from: sender,                    // Sender's email address (predefined variable)
       to: recipients,                   // Recipient's email address
       subject: "Verify your email",     // Subject line of the email
+      // html:htmlContent,
       category: "Email Verification"    // Category for tracking purposes
     });
 
@@ -42,5 +43,46 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
     // Log any errors to the console and throw a new error with a custom message
     console.log(error);
     throw new Error("Failed to send welcome email");
+  }
+}
+
+
+export const sendPasswordResetEmail = async (email: string, resetURL: string) => {
+  const recipients = [{ email }];
+  const htmlContent = "";
+  try {
+    // Send an email using the client
+    const res = await client.send({
+      from: sender,                    // Sender's email address (predefined variable)
+      to: recipients,                   // Recipient's email address
+      subject: "Reset your password",     // Subject line of the email
+      html: htmlContent,                  //   Html Content
+      category: "Reset Password"
+    });
+
+  } catch (error) {
+    // Log any errors to the console and throw a new error with a custom message
+    console.log(error);
+    throw new Error("Failed to send password reset success email");
+  }
+}
+
+export const sendResetSuccessEmail = async (email: string, resetURL: string) => {
+  const recipients = [{ email }];
+  const htmlContent = "";
+  try {
+    // Send an email using the client
+    const res = await client.send({
+      from: sender,                    // Sender's email address (predefined variable)
+      to: recipients,                   // Recipient's email address
+      subject: "Reset password successfully",     // Subject line of the email
+      html: htmlContent,                  //   Html Content
+      category: "Password Reset"
+    });
+
+  } catch (error) {
+    // Log any errors to the console and throw a new error with a custom message
+    console.log(error);
+    throw new Error("Failed to reset password");
   }
 }
