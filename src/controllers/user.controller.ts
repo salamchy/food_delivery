@@ -1,117 +1,101 @@
 import { Request, Response } from "express";
 import { User } from "../models/user.model";
-import Bcryptjs from "bcryptjs";
+import bcrypt from "bcryptjs";
 import crypto from "crypto-js";
 import cloudinary from "../utils/cloudinary";
 import { generateVerificationCode } from "../utils/generateVerificationCode";
 import { generateToken } from "../utils/generateToken";
+import { sendPasswordResetEmail, sendResetSuccessEmail, sendVerification, sendWelcomeEmail } from "../mailtrap/email";
 
-// Function to handle user signup
-export const signup = async (req: Request, res: Response) => {
+
+// Handle user signup
+export const signup = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Destructure values from the request body (name, email, password, contact number)
+    // Extract necessary fields from the request body
     const { fullname, email, password, contact } = req.body;
 
     // Check if a user already exists with the provided email
-    let user = await User.findOne({ email });
-    if (user) {
-      // If user already exists, respond with a 400 status and error message
-      return res.status(400).json({
-        success: false,
-        message: "User already exists with this email"
-      });
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      // If user exists, respond with an error status and message
+      res.status(400).json({ success: false, message: "User already exists with this email" });
+      return;
     }
 
-    // Encrypt (hash) the user's password for security
-    const hashedPassword = await Bcryptjs.hash(password, 10);
+    // Hash the password for secure storage
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Generate a verification token (placeholder for now)
+    // Generate a verification token for email verification purposes
     const verificationToken = generateVerificationCode(6);
 
-    // Create a new user in the database with provided info, hashed password, and verification token
-    user = await User.create({
+    // Create a new user in the database with hashed password and verification token
+    const newUser = await User.create({
       fullname,
       email,
       password: hashedPassword,
-      contact: Number(contact),
+      contact: parseInt(contact, 10) || 0, // Convert contact to integer (default to 0 if invalid)
       verificationToken,
-      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000 // token expires in 24 hours
+      verificationTokenExpiresAt: Date.now() + 24 * 60 * 60 * 1000 // Set token expiry to 24 hours from now
     });
 
-    // Optionally: generate an authentication token and send a verification email (functions not implemented here)
-    generateToken(res, user);
-    // await sendVerificationEmail(email, verificationToken);
+    // Generate an authentication token and set it in the response cookie
+    generateToken(res, newUser);
 
-    // Find the user in the database without including the password field
+    // Send a verification email with the generated token
+    await sendVerification(email, verificationToken);
+
+    // Retrieve the user data without the password field for response
     const userWithoutPassword = await User.findOne({ email }).select("-password");
 
-    // Respond with a success message and user information
-    return res.status(201).json({
-      success: true,
-      message: "Account created successfully",
-      user: userWithoutPassword
-    });
+    // Respond with a success message and user data
+    res.status(201).json({ success: true, message: "Account created successfully", user: userWithoutPassword });
 
   } catch (error) {
-    // Log error to console and respond with a 500 status for server error
-    console.log(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-// Function to handle user login
-export const login = async (req: Request, res: Response) => {
+
+// Handle user login
+export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Destructure email and password from request body
+    // Extract email and password from the request body
     const { email, password } = req.body;
 
-    // Look up user by email in the database
+    // Check if the user exists with the provided email
     const user = await User.findOne({ email });
-    if (!user) {
-      // If user not found, respond with 400 status and error message
-      return res.status(400).json({
-        success: false,
-        message: "Incorrect email or password"
-      });
+
+    // If user does not exist or password does not match, respond with an error
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      res.status(400).json({ success: false, message: "Incorrect email or password" });
+      return;
     }
 
-    // Check if entered password matches the stored hashed password
-    const isPasswordMatch = await Bcryptjs.compare(password, user.password);
-    if (!isPasswordMatch) {
-      // If password does not match, respond with an error
-      return res.status(400).json({
-        success: false,
-        message: "Incorrect email or password"
-      });
-    }
+    // Generate a session token for the user and set it in the response cookie
+    generateToken(res, user);
 
-    // Optional: generate authentication token here (function not implemented)
-    // generateToken(res, user);
-
-    // Update user's last login date to current date
+    // Update the user's last login date to the current date and save the record
     user.lastLogin = new Date();
     await user.save();
 
-    // Retrieve user information without the password
+    // Retrieve the user data excluding the password field for response
     const userWithoutPassword = await User.findOne({ email }).select("-password");
 
-    // Respond with a success message and user information
-    return res.status(200).json({
-      success: true,
-      message: `Welcome back ${user.fullname}`,
-      user: userWithoutPassword
-    });
+    // Respond with a success message, greeting the user, and user data
+    res.status(200).json({ success: true, message: `Welcome back ${user.fullname}`, user: userWithoutPassword });
 
   } catch (error) {
-    // Log error and respond with a 500 status for server error
-    console.log(error);
-    return res.status(500).json({ message: "Internal Server Error" });
+    // Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 
-// Function to handle email verification
-export const verifyEmail = async (req: Request, res: Response) => {
+// Handle email verification
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
   try {
     // Extract the verification code from the request body
     const { verificationCode } = req.body;
@@ -119,84 +103,65 @@ export const verifyEmail = async (req: Request, res: Response) => {
     // Find a user with a matching verification token that hasn't expired
     const user = await User.findOne({
       verificationToken: verificationCode,
-      verificationTokenExpiresAt: { $gt: Date.now() } // token expiry check
-    }).select("-password"); // exclude password from the response
+      verificationTokenExpiresAt: { $gt: Date.now() } // Check if token is still valid
+    }).select("-password"); // Exclude password from the response
 
-    // If no user is found, the token is invalid or expired
+    // If no user is found, respond with an error indicating an invalid or expired token
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired verification token"
-      });
+      res.status(400).json({ success: false, message: "Invalid or expired verification token" });
+      return;
     }
 
-    // Mark the user's account as verified
+    // Mark the user's account as verified and remove the verification token and expiry date
     user.isVerified = true;
-
-    // Remove the verification token and its expiry date from the user record
     user.verificationToken = undefined;
     user.verificationTokenExpiresAt = undefined;
-
-    // Save the updated user information to the database
     await user.save();
 
-    // Optionally: send a welcome email to the user (function not implemented here)
-    // await sendWelcomeEmail(user.email, user.fullname);
+    // Optionally, send a welcome email to the user after successful verification
+    await sendWelcomeEmail(user.email, user.fullname);
 
-    // Respond with a success message and the user information
-    return res.status(200).json({
-      success: true,
-      message: "Email verified successfully",
-      user
-    });
+    // Respond with a success message and user data
+    res.status(200).json({ success: true, message: "Email verified successfully", user });
 
   } catch (error) {
-    // Log the error and respond with a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
 };
 
 
-// Function to handle user logout
-export const logout = async (_: Request, res: Response) => {
+// Handle user logout
+export const logout = async (_: Request, res: Response): Promise<void> => {
   try {
-    // Clear the authentication token cookie and send a success response
-    return res.clearCookie("token").status(200).json({
-      success: true,
-      message: "Logged out successfully"
-    });
+    // Clear the authentication token cookie and respond with a success message
+    res.clearCookie("token").status(200).json({ success: true, message: "Logged out successfully" });
 
   } catch (error) {
-    // If an error occurs, log it to the console and respond with a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
-}
+};
 
 
-// Function to handle forgot password requests
-export const forgotPassword = async (req: Request, res: Response) => {
+// Handle forgot password requests
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Step 1: Retrieve the user's email from the request body
+    // Step 1: Retrieve the email from the request body
     const { email } = req.body;
 
     // Step 2: Check if a user with the provided email exists in the database
     const user = await User.findOne({ email });
     if (!user) {
-      // If user does not exist, return a 400 status with an error message
-      return res.status(400).json({
-        success: false,
-        message: "User doesn't exist"
-      });
+      // If no user is found, respond with a 400 status and an error message
+      res.status(400).json({ success: false, message: "User doesn't exist" });
+      return;
     }
 
-    // Step 3: Generate a unique reset token and set its expiration time to 1 hour from now
-    const resetToken = crypto.randomBytes(40).toString('hex'); // Generate random token
+    // Step 3: Generate a unique reset token and set its expiration time to 1 hour
+    const resetToken = crypto.randomBytes(40).toString('hex');
     const resetTokenExpiresAt = new Date(Date.now() + 1 * 60 * 60 * 1000); // Token expires in 1 hour
 
     // Step 4: Save the reset token and its expiration time in the user’s record
@@ -204,138 +169,122 @@ export const forgotPassword = async (req: Request, res: Response) => {
     user.resetPasswordTokenExpiresAt = resetTokenExpiresAt;
     await user.save();
 
-    // Step 5: Optionally, send an email to the user with the reset link (function not implemented here)
-    // await sendPasswordResetEmail(user.email, `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`); 
+    // Step 5: Send the password reset link to the user's email
+    await sendPasswordResetEmail(user.email, `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`);
 
-    // Step 6: Send a success message indicating that the reset link was sent
-    return res.status(200).json({
-      success: true,
-      message: "Password reset link sent to your email."
-    });
+    // Step 6: Respond with a success message indicating that the reset link has been sent
+    res.status(200).json({ success: true, message: "Password reset link sent to your email." });
 
   } catch (error) {
-    // Log any errors to the console and return a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
-}
+};
 
 
-// Function to handle password reset
-export const resetPassword = async (req: Request, res: Response) => {
+// Handle password reset
+// Function to handle password reset requests
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
   try {
     // Step 1: Retrieve the reset token from the request parameters and the new password from the request body
     const { token } = req.params;
     const { newPassword } = req.body;
 
-    // Step 2: Find a user with a matching reset token that has not expired
+    // Step 2: Find the user by the provided reset token and check if the token is still valid (not expired)
     const user = await User.findOne({
       resetPasswordToken: token,
-      resetPasswordTokenExpiresAt: { $gt: Date.now() } // Check if token is still valid
+      resetPasswordTokenExpiresAt: { $gt: Date.now() } // Token should not be expired
     });
 
-    // Step 3: If no user is found, the token is invalid or expired
+    // Step 3: If no user is found or the token is invalid/expired, send a 400 error
     if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid or expired reset token"
-      });
+      res.status(400).json({ success: false, message: "Invalid or expired reset token" });
+      return;
     }
 
-    // Step 4: Hash the new password for security
-    const hashedPassword = await Bcryptjs.hash(newPassword, 10);
+    // Step 4: Hash the new password and update the user's password
+    user.password = await bcrypt.hash(newPassword, 10);
 
-    // Step 5: Update the user's password and clear the reset token and expiration time
-    user.password = hashedPassword;
+    // Step 5: Clear the reset token and its expiration time to prevent reuse
     user.resetPasswordToken = undefined;
     user.resetPasswordTokenExpiresAt = undefined;
+
+    // Step 6: Save the updated user record to the database
     await user.save();
 
-    // Step 6: Optionally, send an email confirming password reset success (function not implemented here)
-    // await sendResetSuccessEmail(user.email);
+    // Step 7: Send an email notification indicating the password has been successfully reset
+    await sendResetSuccessEmail(user.email);
 
-    // Step 7: Respond with a success message
-    return res.status(200).json({
-      success: true,
-      message: "Password reset successfully."
-    });
+    // Step 8: Respond with a success message indicating that the password was reset successfully
+    res.status(200).json({ success: true, message: "Password reset successfully." });
 
   } catch (error) {
-    // Log any errors to the console and return a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
-}
+};
 
 
-// Function to check if the user is authenticated
-export const checkAuth = async (req: Request, res: Response) => {
+// Check if user is authenticated
+// Function to check if the user is authenticated and retrieve user details
+export const checkAuth = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Step 1: Retrieve the user ID from the request (assumed to be added in a middleware after authentication)
+    // Step 1: Retrieve the user ID from the authenticated request (set by the isAuthenticated middleware)
     const userId = req.id;
 
-    // Step 2: Find the user in the database by their ID, excluding the password field from the result
+    // Step 2: Find the user in the database by the ID, excluding the password field
     const user = await User.findById(userId).select("-password");
 
-    // Step 3: If no user is found, respond with a 404 status and an error message
+    // Step 3: If no user is found, send a 404 response indicating the user doesn't exist
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+      res.status(404).json({ success: false, message: "User not found" });
+      return;
     }
 
-    // Step 4: If user is found, respond with a success message and user information
-    return res.status(200).json({
-      success: true,
-      user
-    });
+    // Step 4: If user is found, send a 200 response with the user details (excluding password)
+    res.status(200).json({ success: true, user });
 
   } catch (error) {
-    // Log any errors to the console and return a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Step 5: Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
-}
+};
 
 
-// Function to handle user profile update
-export const updateProfile = async (req: Request, res: Response) => {
+// Handle user profile update
+// Function to update the user's profile information
+export const updateProfile = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Step 1: Retrieve the user ID from the request, which is assumed to be set by an authentication middleware
+    // Step 1: Retrieve the user ID from the authenticated request (set by the isAuthenticated middleware)
     const userId = req.id;
 
-    // Step 2: Extract updated profile information from the request body
+    // Step 2: Destructure updated data (fullname, email, address, city, profilePicture) from the request body
     const { fullname, email, address, city, profilePicture } = req.body;
 
-    // Step 3: Upload the new profile picture to Cloudinary and store the response
-    let cloudResponse: any;
-    cloudResponse = await cloudinary.uploader.upload(profilePicture);
+    // Step 3: Upload the profile picture to Cloudinary and retrieve the secure URL
+    const cloudResponse = await cloudinary.uploader.upload(profilePicture);
 
-    // Step 4: Prepare updated data object with profile details
-    const updatedData = { fullname, email, address, city, profilePicture: cloudResponse.secure_url };
+    // Step 4: Create an updatedData object containing the new user information (profilePicture URL is from Cloudinary)
+    const updatedData = {
+      fullname,
+      email,
+      address,
+      city,
+      profilePicture: cloudResponse.secure_url
+    };
 
-    // Step 5: Find the user by their ID and update their profile with the new data
+    // Step 5: Update the user's profile information in the database using the userId
     const user = await User.findByIdAndUpdate(userId, updatedData, { new: true }).select("-password");
 
-    // Step 6: Respond with a success message and the updated user profile data
-    return res.status(200).json({
-      success: true,
-      user,
-      message: "Profile updated successfully."
-    });
+    // Step 6: Send a success response with the updated user data (excluding password)
+    res.status(200).json({ success: true, user, message: "Profile updated successfully." });
 
   } catch (error) {
-    // Log any errors to the console and return a 500 status for server error
-    console.log(error);
-    return res.status(500).json({
-      message: "Internal Server error"
-    });
+    // Step 7: Log any errors to the console and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server error" });
   }
-}
+};
