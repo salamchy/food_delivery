@@ -1,19 +1,19 @@
 import mongoose, { Document } from "mongoose";
 
 export interface IUser {
-  fullname: String,
-  email: String,
-  password: String,
+  fullname: string,
+  email: string,
+  password: string,
   contact: Number,
-  address: String,
-  city: String,
-  profilePicture: String,
+  address: string,
+  city: string,
+  profilePicture: string,
   admin: Boolean,
   lastLogin?: Date,
   isVerified?: Boolean,
-  resetPasswordToken?: String, 
+  resetPasswordToken?: string,
   resetPasswordTokenExpiresAt?: Date,
-  verificationToken?: String,
+  verificationToken?: string,
   verificationTokenExpiresAt?: Date
 }
 
@@ -52,9 +52,9 @@ const userSchema = new mongoose.Schema<IUserDocument>({
     type: String,
     default: ""
   },
-  admin:{
+  admin: {
     type: Boolean,
-    default:false
+    default: false
   },
   lastLogin: {
     type: Date,
@@ -64,7 +64,7 @@ const userSchema = new mongoose.Schema<IUserDocument>({
     type: Boolean,
     default: false
   },
-  resetPasswordToken: String, 
+  resetPasswordToken: String,
 
   resetPasswordTokenExpiresAt: Date,
 
@@ -72,6 +72,6 @@ const userSchema = new mongoose.Schema<IUserDocument>({
 
   verificationTokenExpiresAt: Date,
 
-},{timestamps:true});
+}, { timestamps: true });
 
 export const User = mongoose.model("User", userSchema);
