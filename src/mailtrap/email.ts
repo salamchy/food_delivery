@@ -1,7 +1,8 @@
+import { generatePasswordResetEmailHtml, generateResetSuccessEmailHtml, generateWelcomeEmailHtml, htmlContent } from "./htmlEmail";
 import { client, sender } from "./mailtrap";
 
 // Function to send a verification email to the user
-export const sendVerification = async (email: string, verificationToken: string) => {
+export const sendVerification = async (email: string, verificationToken: String) => {
   // Define the recipients as an array of objects, each containing an email address
   const recipients = [{ email }];
 
@@ -11,7 +12,7 @@ export const sendVerification = async (email: string, verificationToken: string)
       from: sender,                    // Sender's email address (predefined variable)
       to: recipients,                   // Recipient's email address
       subject: "Verify your email",     // Subject line of the email
-      // html:htmlContent,
+      html: htmlContent.replace("{verificationToken}", verificationToken),
       category: "Email Verification"    // Category for tracking purposes
     });
 
@@ -25,7 +26,7 @@ export const sendVerification = async (email: string, verificationToken: string)
 
 export const sendWelcomeEmail = async (email: string, name: string) => {
   const recipients = [{ email }];
-  const htmlContent = "";
+  const htmlContent = generateWelcomeEmailHtml(name);
   try {
     // Send an email using the client
     const res = await client.send({
@@ -49,7 +50,7 @@ export const sendWelcomeEmail = async (email: string, name: string) => {
 
 export const sendPasswordResetEmail = async (email: string, resetURL: string) => {
   const recipients = [{ email }];
-  const htmlContent = "";
+  const htmlContent = generatePasswordResetEmailHtml(resetURL);
   try {
     // Send an email using the client
     const res = await client.send({
@@ -67,9 +68,9 @@ export const sendPasswordResetEmail = async (email: string, resetURL: string) =>
   }
 }
 
-export const sendResetSuccessEmail = async (email: string, resetURL: string) => {
+export const sendResetSuccessEmail = async (email: string) => {
   const recipients = [{ email }];
-  const htmlContent = "";
+  const htmlContent = generateResetSuccessEmailHtml();
   try {
     // Send an email using the client
     const res = await client.send({
