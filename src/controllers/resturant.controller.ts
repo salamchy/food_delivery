@@ -44,3 +44,21 @@ export const createResturant = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export const getResturant = async (req: Request, res: Response) => {
+  try {
+    const resturant = await Resturant.find({ user: req.id });
+    if (!resturant) {
+      return res.status(404).json({
+        success: false,
+        message: "Resturant not found"
+      });
+    }
+    return res.status(200).json({ success: true, resturant })
+
+  } catch (error) {
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
