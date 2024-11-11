@@ -62,3 +62,39 @@ export const getResturant = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export const updateResturant = async (req: Request, res: Response) => {
+  try {
+    const { resturantName, city, deliveryTime, cuisines } = req.body;
+    const file = req.file;
+    const resturant = await Resturant.findOne({ user: req.id });
+    if (!resturant) {
+      return res.status(404).json({
+        success: false,
+        message: " Resturant not found"
+      })
+    }
+    resturant.resturantName = resturantName;
+    resturant.city = city;
+    resturant.deliveryTime = deliveryTime;
+    resturant.cuisines = JSON.parse(cuisines);
+
+    if (file) {
+      const imageUrl = await uploadImageOnCloudinary(file as Express.Multer.File);
+      resturant.imageUrl = imageUrl;
+    }
+    await resturant.save();
+    return res.status(200).json({
+      success: true,
+      message: "Resturant updated",
+      resturant
+    })
+
+  } catch (error) {
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+
+//resturant orders
