@@ -18,7 +18,10 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       // If user exists, respond with an error status and message
-      res.status(400).json({ success: false, message: "User already exists with this email" });
+      res.status(400).json({
+        success: false,
+        message: "User already exists with this email"
+      });
       return;
     }
 
@@ -48,7 +51,10 @@ export const signup = async (req: Request, res: Response): Promise<void> => {
     const userWithoutPassword = await User.findOne({ email }).select("-password");
 
     // Respond with a success message and user data
-    res.status(201).json({ success: true, message: "Account created successfully", user: userWithoutPassword });
+    res.status(201).json({
+      success: true,
+      message: "Account created successfully", user: userWithoutPassword
+    });
 
   } catch (error) {
     // Log any errors and respond with a 500 status for server error
