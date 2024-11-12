@@ -145,3 +145,42 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export const searchResturant = async (req: Request, res: Response) => {
+  try {
+    const searchText = req.params.searchText || "";
+    const searchQuery = req.query.searchQuery as string || "";
+    const selectedCuisines = (req.query.selectedCuisines as string || "").split(",").filter(cuisine => cuisine);
+    const query: any = {};
+
+    if (searchText) {
+      query.$or = [
+        { resturantName: { $regex: searchText, $options: 'i' } },
+        { city: { $regx: searchText, $options: 'i' } },
+      ]
+    }
+
+    if (searchQuery) {
+      query.$or = [
+        { resturantName: { $regex: searchText, $options: 'i' } },
+        { cuisines: { $regx: searchQuery, $options: 'i' } },
+      ]
+    }
+
+    if (selectedCuisines.length > 0) {
+      query.cuisines = { $in: selectedCuisines }
+    }
+
+    const resturants = await Resturant.find(query)
+    return res.status(200).json({
+      success: true,
+      data: resturants
+    })
+
+  } catch (error) {
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
+}
