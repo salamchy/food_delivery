@@ -119,3 +119,29 @@ export const getResturantOrder = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export const updateOrderStatus = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    };
+
+    order.status = status;
+    await order.save();
+    return res.status(200).json({
+      success: true,
+      message: "Status updated"
+    });
+
+  } catch (error) {
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
