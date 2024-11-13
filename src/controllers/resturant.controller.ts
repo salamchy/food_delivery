@@ -183,4 +183,27 @@ export const searchResturant = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 }
+
+export const getSingleResturant = async (req: Request, res: Response) => {
+  try {
+    const resturantId = req.params.id;
+    const resturant = await Resturant.findById(resturantId).populate({
+      path: 'Menus',
+      options: { created: -1 }
+    });
+
+    if (!resturant) {
+      return res.status(404).json({
+        success: false,
+        message: "resturant not found"
+      });
+    };
+
+    return res.status(200).json(resturant);
+
+  } catch (error) {
+    // Log any errors and respond with a 500 status for server error
+    console.error(error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
 }
