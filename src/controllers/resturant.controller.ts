@@ -6,7 +6,7 @@ import { Order } from "../models/order.model";
 
 export const createResturant = async (req: Request, res: Response) => {
   try {
-    const { resturantName, city, price, deliveryTime, cuisines } = req.body;
+    const { resturantName, city, deliveryTime, cuisines } = req.body;
     const file = req.file;
 
     const resturant = await Resturant.findOne({ user: req.id });
