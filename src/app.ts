@@ -3,6 +3,7 @@ import cookieParser from "cookie-parser";
 import cors from "cors";
 import userRouter from "./routes/user.route";
 import resturantRouter from "./routes/resturant.route";
+import menuRouter from "./routes/menu.route";
 import bodyParser from "body-parser"
 
 // Create an instance of an Express application
@@ -35,3 +36,4 @@ app.use(cookieParser());
 //api
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/resturant", resturantRouter);
+app.use("/api/v1/menu", menuRouter);
