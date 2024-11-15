@@ -5,7 +5,7 @@ import { Resturant } from "../models/resturant.model";
 import mongoose from "mongoose";
 import { log } from "console";
 
-export const addMenu = async (req: Request, res: Response) => {
+export const addMenu = async (req: Request, res: Response): Promise<void> => {
   try {
     // Destructure the necessary data from the request body
     const { name, description, price } = req.body;
@@ -48,8 +48,8 @@ export const addMenu = async (req: Request, res: Response) => {
       await resturant.save();
     }
 
-    // Respond with a success message and the newly created menu data
-    return res.status(201).json({
+    // Send a success response
+    res.status(201).json({
       success: true,
       message: "Menu added successfully",
       menu, // Include the newly created menu in the response
@@ -58,12 +58,13 @@ export const addMenu = async (req: Request, res: Response) => {
     // Log the error for debugging purposes
     console.error(error);
 
-    // Respond with a 500 status code for any unexpected server errors
+    // Send a server error response
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
-export const editMenu = async (req: Request, res: Response) => {
+
+export const editMenu = async (req: Request, res: Response): Promise<void> => {
   try {
     // Extract the menu ID from the request parameters
     const { id } = req.params;
@@ -102,12 +103,11 @@ export const editMenu = async (req: Request, res: Response) => {
     await menu.save();
 
     // Respond with a success message and the updated menu item
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Menu Updated", // Inform the client that the menu was successfully updated
       menu, // Include the updated menu in the response
     });
-
   } catch (error) {
     // Log the error for debugging purposes
     console.error(error);
@@ -116,3 +116,4 @@ export const editMenu = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+
