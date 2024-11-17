@@ -24,6 +24,21 @@ type checkOutSessionRequest = {
   resturantId: string
 }
 
+export const getOrders = async (req: Request, res: Response) => {
+  try {
+    const orders = await Order.find({ user: req.id }).populate('user').populate('resturant');
+    return res.status(200).json({
+      success: true,
+      orders
+    })
+  } catch (error) {
+    // Log the error for debugging purposes
+    console.error(error);
+
+    // Send a server error response
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+}
 
 export const createCheckOutSession = async (req: Request, res: Response): Promise<void> => {
   try {
