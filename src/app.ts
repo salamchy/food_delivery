@@ -4,6 +4,7 @@ import cors from "cors";
 import userRouter from "./routes/user.route";
 import resturantRouter from "./routes/resturant.route";
 import menuRouter from "./routes/menu.route";
+import orderRouter from "./routes/order.route";
 import bodyParser from "body-parser"
 
 // Create an instance of an Express application
@@ -37,3 +38,4 @@ app.use(cookieParser());
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/resturant", resturantRouter);
 app.use("/api/v1/menu", menuRouter);
+app.use("/api/v1/order", orderRouter);
